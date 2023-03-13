@@ -18,11 +18,11 @@ const config: HardhatUserConfig = {
       chainId: 2,
       forking: {
         url: "https://eth-mainnet.g.alchemy.com/v2/" + process.env.ALCHEMY_ID,
-        blockNumber: 16777679
+        blockNumber: 16818600
       },
       gasPrice: 0,
       initialBaseFeePerGas: 0,
-      loggingEnabled: true
+      loggingEnabled: false
     },
     local: {
       url: "http://127.0.0.1:8545/"
