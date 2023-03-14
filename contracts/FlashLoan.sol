@@ -68,11 +68,17 @@ contract FlashLoan is IFlashLoanReceiver{
         console.log("initiator is: ", initiator);
         // console.logBytes(abi.encodePacked(params));
         // console.logBytes(abi.encodePacked(LIDOMODE));
-
-        if (keccak256(abi.encodePacked(params)) == keccak256(abi.encodePacked(LIDOMODE))) {
-            _excuteLIDO(assets[0], amounts[0]);
-            return true;
-        }
+        // (address Long, uint16 slip, uint256 expectAmountOut) = abi.decode(params, (address, uint16, uint256));
+        address Long = address(bytes20(params[0:20]));
+        uint16 slip = uint16(bytes2(params[20:22]));
+        uint256 expectAmountOut = uint256(bytes32(params[22:]));
+        console.log("Long address", Long);
+        console.log("slipage is: ", slip);
+        console.log("expectAmountOut: ", expectAmountOut);
+        // if (keccak256(abi.encodePacked(params)) == keccak256(abi.encodePacked(LIDOMODE))) {
+        //     _excuteLIDO(assets[0], amounts[0]);
+        //     return true;
+        // }
 
         // deposit the amount of asset to IPOOL
         uint256 approve = amounts[0] * 3;
@@ -82,9 +88,9 @@ contract FlashLoan is IFlashLoanReceiver{
         // uint256 balance = IERC20(assets[0]).balanceOf(address(this));
         // console.log("excuteOp balance is: ", IERC20(assets[0]).balanceOf(address(this)));
         // console.log("supply");
-        // console.log("asset is ",assets[0]);
-        // console.log("amount is ", amounts[0]);
-        // console.log("premiums is ", premiums[0]);
+        console.log("asset is ",assets[0]);
+        console.log("amount is ", amounts[0]);
+        console.log("premiums is ", premiums[0]);
 
         POOL.supply(
             assets[0],
