@@ -2,17 +2,18 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { BigNumber, Contract, ethers, Signer } from 'ethers';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
+import { 
+  poolAddressProvider, 
+  WALLET_ADDRESS
+} from './address';
+
+import {
+  daiAbi,
+  aTokenAbi,
+  debtTokenABI,
+} from "./ABI";
 
 const hre: HardhatRuntimeEnvironment = require('hardhat');
-const daiAbi = require("./abi/DAIABI.json");
-const poolAddressProvider: string = '0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e';
-const daiAddress: string = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
-const aDaiAddree: string = '0x018008bfb33d285247A21d44E50697654f754e63';
-const WALLET_ADDRESS="0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549"
-
-const aTokenAbi = ["function balanceOf(address account) external view returns (uint256)",];
-const debtTokenABI = ["function approveDelegation(address delegatee, uint256 amount) external"]
-
 async function main() {
 
   await impersonateAccount(WALLET_ADDRESS);

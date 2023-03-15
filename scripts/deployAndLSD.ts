@@ -4,32 +4,20 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 
 const hre: HardhatRuntimeEnvironment = require('hardhat');
-const poolAddressProvider: string = '0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e';
-const daiAddress: string = '0x6B175474E89094C44Da98b954EedeAC495271d0F';
-const WETHAddress: string = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+import { 
+  poolAddressProvider, 
+  WETHAddress,
+  WETHGateWai,
+  aWETHAddress,
+  WALLET_ADDRESS
+ } from './address';
 
-const WETHGateWai: string = '0xD322A49006FC828F9B5B37Ab215F99B4E5caB19C';
+ import {
+  aTokenAbi,
+  debtTokenABI,
+  WETHGateABI
+} from "./ABI";
 
-const aWETHAddress: string = '0x4d5F47FA6A74757f35C14fD3a6Ef8E3C9BC514E8';
-const WALLET_ADDRESS="0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549"
-
-const aTokenAbi = ["function balanceOf(address account) external view returns (uint256)",];
-const debtTokenABI = ["function approveDelegation(address delegatee, uint256 amount) external"];
-const WETHGateABI = ["function depositETH(address,address onBehalfOf,uint16 referralCode) payable external"];
-
-const LIDO_ABI =  [
-    {
-        constant: false,
-        inputs: [{ name: "_referral", type: "address" }],
-        name: "submit",
-        outputs: [{ name: "", type: "uint256" }],
-        payable: true,
-        stateMutability: "payable",
-        type: "function"
-    }
-];
-
-const LIDO_ADDRESS = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
 
 async function main() {
 
@@ -88,9 +76,6 @@ async function main() {
   );
   accountData = await POOL.getUserAccountData(fakeSigner.address);
   console.log(accountData);
-
-  // end
-
 }
 
 // We recommend this pattern to be able to use async/await everywhere
