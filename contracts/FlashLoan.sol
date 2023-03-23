@@ -8,13 +8,14 @@ import {IERC20} from "./interfaces/IERC20.sol";
 import {IWETH} from "./interfaces/IWETH.sol";
 import {IWstETH} from "./interfaces/LIDO/IWstETH.sol";
 import {ILido} from "./interfaces/LIDO/ILido.sol";
-
+import {IComet} from "./interfaces/COMP/IComet.sol";
 import {ISwapRouter} from '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 
 import "hardhat/console.sol";
 
 contract FlashLoan is IFlashLoanReceiver{
     IPoolAddressesProvider public override ADDRESSES_PROVIDER;
+    IComet public COMET;
     ISwapRouter public SWAP_ROUTER;
 
     IPool public override POOL;
@@ -23,9 +24,12 @@ contract FlashLoan is IFlashLoanReceiver{
     bytes32 public constant LIDOMODE = '0';
     address public LIDOADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address payable public WSTADDRESS = payable(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    address public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     constructor(address provider, address swapRouter, address owner) public {
         ADDRESSES_PROVIDER = IPoolAddressesProvider(provider);
+        address comet = 0xc3d688B66703497DAA19211EEdff47f25384cdc3;
+        COMET = IComet(comet);
         SWAP_ROUTER = ISwapRouter(swapRouter);
         POOL = IPool(ADDRESSES_PROVIDER.getPool());
         OWNER = owner;
@@ -50,6 +54,7 @@ contract FlashLoan is IFlashLoanReceiver{
     ) external returns (bool) {
         // uint256 balance = IERC20(assets[0]).balanceOf(address(this));
         // console.log("balance is: ", balance);
+        // if we keep params in a map, Will the transaction consume less gas? 
         POOL.flashLoan(
             address(this), 
             assets, 
@@ -70,40 +75,55 @@ contract FlashLoan is IFlashLoanReceiver{
         address initiator,
         bytes calldata params
     ) external returns (bool) {
+        // console.log(msg.sender);
         console.log("initiator is: ", initiator);
         // console.logBytes(abi.encodePacked(params));
         // console.logBytes(abi.encodePacked(LIDOMODE));
         // (address Long, uint16 slip, uint256 expectAmountOut) = abi.decode(params, (address, uint16, uint256));
-        address Long = address(bytes20(params[0:20]));
-        uint16 poolFee = uint16(bytes2(params[20:22]));
-        uint256 expectAmountOut = uint256(bytes32(params[22:]));
-        console.log("Long address", Long);
-        console.log("poolFee is: ", poolFee);
-        console.log("expectAmountOut: ", expectAmountOut);
-        // if (keccak256(abi.encodePacked(params)) == keccak256(abi.encodePacked(LIDOMODE))) {
-        //     _excuteLIDO(assets[0], amounts[0]);
-        //     return true;
-        // }
+        uint8 mode = uint8(bytes1(params[0:1]));
+        console.log("mode is: ", mode);
 
+        // In order to simplify, it check the value of mode to decide what platfrom user want to leverage
+        // in the future, we use function selector todicide
+        if (mode == 1) {
+            console.log("AAVE");
+            address Long = address(bytes20(params[1:21]));
+            uint16 poolFee = uint16(bytes2(params[21:23]));
+            uint256 expectAmountOut = uint256(bytes32(params[23:]));
+            console.log("Long address", Long);
+            console.log("poolFee is: ", poolFee);
+            console.log("expectAmountOut: ", expectAmountOut);
+            console.log("short asset is ",assets[0]);
+            console.log("flash loan amount is ", amounts[0]);
+            console.log("premiums is ", premiums[0]);
+            uint256 amountOut = swapExactInputSingle(assets[0], Long, amounts[0], poolFee, expectAmountOut);
+            console.log("After swap amount is :", amountOut);
+            // deposit the amount of asset to IPOOL
+            // approve pool to pull money form this to deposit
+            bool status = leverageAAVEPos(Long, amountOut, OWNER, 0);
+        } 
+        else if (mode == 2) {
+            console.log("Compound");
+            console.log("long asset is ",assets[0]);
+            console.log("flash loan amount is ", amounts[0]);
+            console.log("premiums is ", premiums[0]);
+            uint256 expectAmountOut = uint256(bytes32(params[23:]));
+            IERC20(assets[0]).approve(address(COMET), amounts[0]);
+            COMET.supplyTo(initiator, assets[0], amounts[0]);
+            console.log("");
+            uint256 balance = COMET.collateralBalanceOf(initiator, assets[0]);
+            console.log("After supply collateral balance is: ", balance);
+            COMET.withdrawFrom(initiator, address(this), USDC, 2000000000);
+            balance = IERC20(USDC).balanceOf(address(this));
+            console.log("After borrow usdc balance is: ", balance);
+            uint256 amountOut = swapExactInputSingle(USDC, assets[0], balance, 3000, expectAmountOut);
+            console.log("After swap amount is :", amountOut);
+            IERC20(assets[0]).approve(address(POOL), amounts[0] + premiums[0]);
+        }
         // uint256 balance = IERC20(assets[0]).balanceOf(address(this));
         // console.log("excuteOp balance is: ", IERC20(assets[0]).balanceOf(address(this)));
         // console.log("supply");
-        console.log("short asset is ",assets[0]);
-        console.log("flash loan amount is ", amounts[0]);
-        console.log("premiums is ", premiums[0]);
-        uint256 amountOut = swapExactInputSingle(assets[0], Long, amounts[0], poolFee, expectAmountOut);
-        console.log("After swap amount is :", amountOut);
 
-        // deposit the amount of asset to IPOOL
-
-        // approve pool to pull money form this to deposit
-        IERC20(Long).approve(address(POOL), amountOut);
-        POOL.supply(
-            Long,
-            amountOut,
-            OWNER,
-            0
-        );
 
         console.log("finish execute Op");
         return true;
@@ -182,6 +202,23 @@ contract FlashLoan is IFlashLoanReceiver{
         // The call to `exactInputSingle` executes the swap.
         amountOut = SWAP_ROUTER.exactInputSingle(params);
         console.log("swap done");
+    }
+
+    function leverageAAVEPos(
+        address asset,
+        uint256 amount,
+        address user,
+        uint16 refer
+    ) internal returns (bool){
+        // approve pool to pull money form this to deposit
+        IERC20(asset).approve(address(POOL), amount);
+        POOL.supply(
+            asset,
+            amount,
+            user,
+            refer
+        );
+        return true;
     }
 
     function _safeApprove(

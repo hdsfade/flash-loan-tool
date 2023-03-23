@@ -56,7 +56,7 @@ async function main() {
     // FLASH LOAN $2000 DAI and short DAI
   
     // apporve flashloan to increase debt on fakesigner
-    const flashloanAmount = ethers.utils.parseUnits("500", 18);
+    const flashloanAmount = ethers.utils.parseUnits("1000", 18);
     const debtTokenAddress = (await POOL.getReserveData(DaiAddress)).variableDebtTokenAddress;
     const debtToken = new ethers.Contract(debtTokenAddress, debtTokenABI, fakeSigner);
     // it need to be approved by user, so contract can credit the debt to user address
@@ -69,8 +69,9 @@ async function main() {
     // this params is used to meet the condition in executeOperation
     // params: 1. address is long asset address 2. Slippage 500 ~ 0.05% 3000 ~ 0.3% 10000 ~ 1%
     const poolFee = 3000;
-    const amountOutLeast = ethers.utils.parseUnits("700", "ether");
-    const params = ethers.utils.solidityPack(["address", "uint16", "uint256"], [WETHAddress, poolFee, amountOutLeast]);
+    const amountOutLeast = ethers.utils.parseUnits("1000", "ether");
+    const mode = 1;
+    const params = ethers.utils.solidityPack(["uint8","address", "uint16", "uint256"], [mode, WETHAddress, poolFee, amountOutLeast]);
     // const params = ethers.utils.formatBytes32String("hello");
 
     const tx2 = await flashLoan.connect(fakeSigner).callAAVEFlashLoan(
