@@ -200,6 +200,7 @@ contract FlashLoan is IFlashLoanReceiver{
 
         // The call to `exactInputSingle` executes the swap.
         amountOut = SWAP_ROUTER.exactInputSingle(params);
+        require(amountOut >= expectAmountOut, "Uniswap Slip too big");
         console.log("swap done");
     }
 

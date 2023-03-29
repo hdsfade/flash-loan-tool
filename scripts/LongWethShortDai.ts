@@ -105,12 +105,14 @@ async function main() {
     let flashloanAmount = needDAIAmount.mul(10 ** (DAIdecimal - 8));
     // let DAIValue = flashloanAmount.mul(DAIPrice).div(ethers.utils.parseUnits("1.0", 18));
     // console.log("DAI Value = ", ethers.utils.formatUnits(DAIValue, 8));
-    
     console.log("");
-    // 100bps = 1%
-    let slippage = 100;
-    console.log("User's slippage = %d", Number(slippage / 10000))
-    let amountOutLeast = flashloanAmount.mul(10000 - slippage).div(10000);
+    // 20bps = 0.2%, when i test, i found the uniswap slip is about 0.1%. WETH-DAI have a lot liquidity, so the slip is small. 
+    // But we need to test whether other token-pair swap can have the same slip level.
+    let slippage = 20;
+    console.log("User's slippage = %d", Number(slippage / 10000));
+    let needSwapETH = userBalance.mul(userleverage).sub(userBalance);
+    console.log("   After swap, we need %s ETH to deposit into the Platform", needSwapETH.toString());
+    let amountOutLeast = needSwapETH.mul(10000 - slippage).div(10000);
     console.log("   So after swap, the output should be at least = ", amountOutLeast.toString());
 
     console.log("");
@@ -131,16 +133,16 @@ async function main() {
     const params = ethers.utils.solidityPack(["uint8","address", "uint16", "uint256"], [mode, WETHAddress, poolFee, amountOutLeast]);
     // const params = ethers.utils.formatBytes32String("hello");
 
-    // const tx2 = await flashLoan.connect(fakeSigner).callAAVEFlashLoan(
-    //   flashLoan.address,
-    //   assets,
-    //   amounts,
-    //   interestRateModes,
-    //   params,
-    //   0,
-    // );
-    // accountData = await POOL.getUserAccountData(fakeSigner.address);
-    // console.log(accountData);
+    const tx2 = await flashLoan.connect(fakeSigner).callAAVEFlashLoan(
+      flashLoan.address,
+      assets,
+      amounts,
+      interestRateModes,
+      params,
+      0,
+    );
+    accountData = await POOL.getUserAccountData(fakeSigner.address);
+    console.log(accountData);
   
     // end
   
