@@ -42,7 +42,7 @@ npx hardhat run .\scripts\deployAndLSD.ts --network hardhat
 
 #### 可借出资产
 - USDC
-- ETH
+- WETH
 
 ## References
 
