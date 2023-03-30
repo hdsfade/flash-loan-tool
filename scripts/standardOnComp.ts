@@ -8,7 +8,7 @@ import {
   USDCAddress,
  } from './address';
 import {hre} from "./constant";
-import {deployFlashLoan} from "./deployHelper";
+import {deployFlashLoan} from "./helpers/deployHelper";
 import {
     calcUserAssetValue, 
     calcNeedBorrowValue,
@@ -17,7 +17,7 @@ import {
     calcLeveragePosition,
     calcNeedBorrowAmount,
     adoptTokenDicimals
-} from "./leverage";
+} from "./helpers/leverage";
 import { 
     initCompContract,
     supplyWETH, 
@@ -26,12 +26,12 @@ import {
     getMaxLeverageOnComp,
     allowFlashLoanContract,
     COMET
-} from './compContract';
+} from './helpers/compHelper';
 import {
     initAAVEContract,
     calcFlashLoanFee,
     AAVE_POOL
-} from "./aaveContract";
+} from "./helpers/aaveHelper";
 
 async function main() {
     await impersonateAccount(WALLET_ADDRESS);

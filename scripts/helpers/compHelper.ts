@@ -3,11 +3,11 @@ import { BigNumber, Contract, Signer, ethers } from 'ethers';
 import { 
     bulker_ADDRESS,
     cUSDC_comet_ADDRESS,
-} from './address';
+} from '../address';
 import {getMaxLeverage} from "./leverage";
 export var BULKER: Contract;
 export var COMET: Contract;
-import {hre} from "./constant";
+import {hre} from "../constant";
 import { getAssetCF, getAssetPriceFeed } from "./compConfigHelper";
 
 export const initCompContract = async (signer: Signer) => {

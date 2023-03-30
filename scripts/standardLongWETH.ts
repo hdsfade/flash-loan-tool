@@ -10,7 +10,7 @@ import {
   calcNeedBorrowAmount,
   adoptTokenDicimals,
   getAmountOutleast
-} from './leverage';
+} from './helpers/leverage';
 import {
     initAavePriceOracle,
     getAssetPriceOnAAVE,
@@ -23,8 +23,8 @@ import {
     apporve2Borrow, 
     checkBorrowAllowance,
     getMaxLeverageOnAAVE
-} from "./aaveContract";
-import {deployFlashLoan} from "./deployHelper";
+} from "./helpers/aaveHelper";
+import {deployFlashLoan} from "./helpers/deployHelper";
 import {hre} from "./constant";
 
 async function main() {

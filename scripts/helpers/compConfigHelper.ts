@@ -1,5 +1,5 @@
 import { BigNumber } from "ethers";
-import { COMET } from "./compContract";
+import { COMET } from "./compHelper";
 
 interface AssetInfo {
     offset: BigNumber;

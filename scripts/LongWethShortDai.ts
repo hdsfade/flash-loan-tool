@@ -19,7 +19,7 @@ import {
 } from "./ABI";
 import {
   getLtv
-} from "./aaveConfigHelper";
+} from "./helpers/aaveConfigHelper";
 const hre: HardhatRuntimeEnvironment = require('hardhat');
 
 async function main() {

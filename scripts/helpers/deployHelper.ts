@@ -1,10 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Signer } from 'ethers';
-import { hre } from './constant';
+import { hre } from '../constant';
 import { 
     poolAddressProvider, 
     V3_SWAP_ROUTER_ADDRESS,
-} from './address';
+} from '../address';
 
 export const deployFlashLoan =async (signer: SignerWithAddress) => {
     let flashLoanFact = await hre.ethers.getContractFactory("FlashLoan");

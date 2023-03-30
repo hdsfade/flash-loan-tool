@@ -5,13 +5,13 @@ import {
     AAVE_Price_Oricle_Address,
     WETH_GATEWAY_ADDRESS,
     aWETHAddress
-} from "./address";
+} from "../address";
 import {
     aTokenAbi,
     debtTokenABI,
     WETHGateABI
-  } from "./ABI";
-import {hre} from "./constant";
+  } from "../ABI";
+import {hre} from "../constant";
 import {getLtv} from "./aaveConfigHelper";
 import {getMaxLeverage} from "./leverage";
 
