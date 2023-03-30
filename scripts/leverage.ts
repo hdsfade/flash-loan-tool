@@ -1,45 +1,14 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { Contract, ethers, Signer, BigNumber } from "ethers";
-import {
-    AAVE_Price_Oricle_Address
-} from './address';
-import {
-    getLtv
-  } from "./configHelper";
-const hre: HardhatRuntimeEnvironment = require('hardhat');
+import { ethers, BigNumber } from "ethers";
 
-let priceOricleABI;
-let AavePriceOricle : Contract;
-
-export const initPriceOracle = async (signer: Signer) => {
-    priceOricleABI = await (await hre.artifacts.readArtifact("IAaveOracle")).abi;
-    AavePriceOricle = new ethers.Contract(AAVE_Price_Oricle_Address, priceOricleABI, signer);
-}
-
-export const getAssetPriceOnAAVE = async (asset: string) => {
-    let price = await AavePriceOricle.getAssetPrice(asset);
-    return price;
-}
-
-export const getMaxLeverage =async (asset: string, POOL: Contract, TokenName: string) => {
-    let assetConfig = (await POOL.getConfiguration(asset)).data;
-    let assetLTV = getLtv(assetConfig);
+export const getMaxLeverage =async (assetLTV: bigint) => {
     // MAX Leverage = 1 / (1 - LTV)
     let maxleverage = 10000n / (10000n - assetLTV);
-    console.log("   According to the AAVE %s Asset Configuration:", TokenName);
-    console.log("       The Maximum leverage abilidity = ", maxleverage.toString());
     return maxleverage;
 }
 
-export const getUserATokenBalance = async (aToken: Contract, userAddress: string) => {
-    return (await aToken.balanceOf(userAddress));
-}
-
-export const calcAssetValue =async (userAddress: string, asset: string, decimal: number, aToken: Contract) => {
-    let price = await getAssetPriceOnAAVE(asset);
-    console.log("   Now Asset Price = $%d", ethers.utils.formatUnits(price, 8));
-    let userBalance = await getUserATokenBalance(aToken, userAddress);
+export const calcUserAssetValue =async (userBalance: BigNumber, price: BigNumber, decimal: number) => {
     console.log("   User aToken Balance = ", userBalance.toString());
+    console.log("   Now Asset Price = $%d", ethers.utils.formatUnits(price, 8));
     let assetValue = price.mul(userBalance).div(ethers.utils.parseUnits("1.0", decimal));
     console.log("   User asset Value = ", ethers.utils.formatUnits(assetValue, 8));
     return assetValue;

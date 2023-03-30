@@ -4,11 +4,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { DaiAddress, WETHAddress, aWETHAddress, WALLET_ADDRESS} from './address';
 import { 
-  initPriceOracle,
-  getAssetPriceOnAAVE,
-  getMaxLeverage,
-  getUserATokenBalance,
-  calcAssetValue,
+  calcUserAssetValue,
   calcLeveragePosition,
   calcNeedBorrowValue,
   calcNeedBorrowAmount,
@@ -16,17 +12,20 @@ import {
   getAmountOutleast
 } from './leverage';
 import {
+    initAavePriceOracle,
+    getAssetPriceOnAAVE,
+    getUserATokenBalance,
     initAAVEContract, 
     AAVE_POOL, WETH_GATEWAY, 
     aTokenContract, 
     debtTokenContract, 
     getAssetDebtTokenAddress, 
     apporve2Borrow, 
-    checkBorrowAllowance
+    checkBorrowAllowance,
+    getMaxLeverageOnAAVE
 } from "./aaveContract";
 import {deployFlashLoan} from "./deployHelper";
-
-const hre: HardhatRuntimeEnvironment = require('hardhat');
+import {hre} from "./constant";
 
 async function main() {
 
@@ -58,22 +57,17 @@ async function main() {
     let accountData = await AAVE_POOL.getUserAccountData(fakeSigner.address);
     // console.log(accountData);
     
-    // calculate the maximum amount of Long asset that user can borrow;
-    // const priceOricleABI = await (await hre.artifacts.readArtifact("IAaveOracle")).abi;
-    // const priveOricle = new ethers.Contract(AAVE_Price_Oricle_Address, priceOricleABI, fakeSigner);
-    
-    // let checkAsset = [WETHAddress, DaiAddress];
-    // let AavePrices : ethers.BigNumber[] = await priveOricle.getAssetsPrices(checkAsset);
-    
-    
     // console.log(AavePrices);
     // Price 小数位为8
-    await initPriceOracle(fakeSigner);
+    await initAavePriceOracle(fakeSigner);
     console.log("");
     console.log("Now calculate user max leverage...");
     console.log("   User deposit Asset is WETH");
-    const WETHValue = await calcAssetValue(fakeSigner.address, WETHAddress, 18, aWETH);
-    let maxleverage = await getMaxLeverage(WETHAddress, AAVE_POOL, "WETH");
+    let WETHPrice = await getAssetPriceOnAAVE(WETHAddress);
+    let userBalance = await getUserATokenBalance(aWETH, fakeSigner.address);
+    const WETHValue = await calcUserAssetValue(userBalance, WETHPrice, 18);
+
+    let maxleverage = await getMaxLeverageOnAAVE(WETHAddress, AAVE_POOL, "WETH");
     // WETH Value * MAX Leverage = MAX Borrow Cap 
     let maxBorrowCap = WETHValue.mul(maxleverage);
     console.log("       The MAX amount of position (in USD)  = $%d", ethers.utils.formatUnits(maxBorrowCap, 8).toString());
@@ -101,7 +95,6 @@ async function main() {
     let slippage = 20;
     let slipPercent: number = slippage / 10000;
     console.log("User's slippage = %d", slipPercent);
-    let userBalance = await getUserATokenBalance(aWETH, fakeSigner.address);
     let needSwapETH = calcNeedBorrowValue(userBalance, userleverage);
     console.log("   After swap, we need %s ETH to deposit into the Platform", needSwapETH.toString());
     let amountOutLeast = getAmountOutleast(needSwapETH, slippage);
