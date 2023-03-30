@@ -49,6 +49,7 @@ interface IAaveOracle is IPriceOracleGetter {
    */
   function setFallbackOracle(address fallbackOracle) external;
 
+  function getAssetPrice(address asset) external view override returns (uint256);
   /**
    * @notice Returns a list of prices from a list of assets addresses
    * @param assets The list of assets addresses
