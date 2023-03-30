@@ -50,7 +50,7 @@ async function main() {
     const tx1 =  await WETH_GATEWAY.connect(fakeSigner).depositETH(fakeSigner.address,fakeSigner.address, 0, {value: depositAmount});
     console.log("After Deposit...");
     // check if we actually have one aWETH
-    const aTokenBalance = await aWETH.balanceOf(fakeSigner.address);
+    const aTokenBalance = await getUserATokenBalance(aWETH, fakeSigner.address);
     console.log("   user a%sBalance is ", "ETH", aTokenBalance.toString());
 
     // check user account data
@@ -85,9 +85,9 @@ async function main() {
     console.log("       user want to leverage up their position to $%d", newPosition.toString());
     let needBorrowAmountUSD = calcNeedBorrowValue(WETHValue, userleverage);
     console.log("       so user need to flash loan (in USDC) = $%d", ethers.utils.formatUnits(needBorrowAmountUSD, 8).toString());
-    let needDAIAmount = calcNeedBorrowAmount(needBorrowAmountUSD, DAIPrice);
-    console.log("       so user need to borrow DAI Amount = ", ethers.utils.formatUnits(needDAIAmount, 8).toString());
-    let flashloanAmount = adoptTokenDicimals(needDAIAmount, 8, DAIdecimal);
+    let needBorrowAmount = calcNeedBorrowAmount(needBorrowAmountUSD, DAIPrice);
+    console.log("       so user need to borrow DAI Amount = ", ethers.utils.formatUnits(needBorrowAmount, 8).toString());
+    let flashloanAmount = adoptTokenDicimals(needBorrowAmount, 8, DAIdecimal);
 
     console.log("");
     // 20bps = 0.2%, when i test, i found the uniswap slip is about 0.1%. WETH-DAI have a lot liquidity, so the slip is small. 
@@ -107,6 +107,7 @@ async function main() {
     // it need to be approved by user, so contract can credit the debt to user address
     await apporve2Borrow(debtToken, fakeSigner, flashLoan.address, flashloanAmount); 
     await checkBorrowAllowance(debtToken, fakeSigner.address, flashLoan.address);
+    
     const assets : string[] = [DaiAddress,];
     const amounts : ethers.BigNumber[] = [flashloanAmount, ]; 
     const interestRateModes : ethers.BigNumber[] = [BigNumber.from("2"), ];

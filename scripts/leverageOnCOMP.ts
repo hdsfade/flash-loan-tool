@@ -1,5 +1,4 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { BigNumber, Contract, ethers, Signer } from 'ethers';
+import { BigNumber, Contract, ethers } from 'ethers';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { 
@@ -12,8 +11,7 @@ import {
   bulker_ADDRESS,
   cUSDC_comet_ADDRESS,
  } from './address';
-
- const hre: HardhatRuntimeEnvironment = require('hardhat');
+import {hre} from "./constant";
 
 async function main() {
 

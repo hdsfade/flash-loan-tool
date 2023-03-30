@@ -12,7 +12,7 @@ import {
     WETHGateABI
   } from "./ABI";
 import {hre} from "./constant";
-import {getLtv} from "./configHelper";
+import {getLtv} from "./aaveConfigHelper";
 import {getMaxLeverage} from "./leverage";
 
 export var AAVE_POOL: Contract;
@@ -71,4 +71,10 @@ export const getMaxLeverageOnAAVE =async (asset: string, POOL: Contract, TokenNa
     console.log("   According to the AAVE %s Asset Configuration:", TokenName);
     console.log("       The Maximum leverage abilidity = ", maxleverage.toString());
     return maxleverage;
+}
+
+export const calcFlashLoanFee = async (amount: BigNumber) => {
+    let Premium = await AAVE_POOL.FLASHLOAN_PREMIUM_TOTAL();
+    let fee = amount.mul(Premium).div(10000);
+    return fee;   
 }

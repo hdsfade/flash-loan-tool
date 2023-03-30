@@ -4,10 +4,11 @@ import {
     bulker_ADDRESS,
     cUSDC_comet_ADDRESS,
 } from './address';
-
+import {getMaxLeverage} from "./leverage";
 export var BULKER: Contract;
 export var COMET: Contract;
 import {hre} from "./constant";
+import { getAssetCF, getAssetPriceFeed } from "./compConfigHelper";
 
 export const initCompContract = async (signer: Signer) => {
     let bulkerABI = await (await hre.artifacts.readArtifact("IBulker")).abi;
@@ -32,4 +33,23 @@ export const getUserCollateralBalance = async (userAddress: string, assetAddress
     return (await COMET.collateralBalanceOf(userAddress, assetAddress));
 }
 
-export const 
+export const getAssetPriceOnComp =async (assetAddress: string) => {
+    let priceFeed = await getAssetPriceFeed(assetAddress);
+    return (await COMET.callStatic.getPrice(priceFeed));
+}
+
+export const getMaxLeverageOnComp =async (asset: string, TokenName: string) => {
+    let assetLTV = BigInt(await getAssetCF(asset));
+    // MAX Leverage = 1 / (1 - LTV)
+    let maxleverage = await getMaxLeverage(assetLTV);
+    console.log("   According to the Comp %s Asset Configuration:", TokenName);
+    console.log("       The Maximum leverage abilidity = ", maxleverage.toString());
+    return maxleverage;
+}
+
+export const allowFlashLoanContract = async (signer: SignerWithAddress, flashLoanAddress: string) => {
+    const tx2 = await COMET.connect(signer).allow(flashLoanAddress, true);
+    let tx_receipt = await tx2.wait();
+    // let allowance = await COMET.connect(signer).allowance(signer.address, flashLoanAddress);
+    // console.log("allowance is: ", allowance);
+}

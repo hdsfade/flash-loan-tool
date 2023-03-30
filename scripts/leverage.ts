@@ -7,7 +7,7 @@ export const getMaxLeverage =async (assetLTV: bigint) => {
 }
 
 export const calcUserAssetValue =async (userBalance: BigNumber, price: BigNumber, decimal: number) => {
-    console.log("   User aToken Balance = ", userBalance.toString());
+    console.log("   User collateral token Balance = ", userBalance.toString());
     console.log("   Now Asset Price = $%d", ethers.utils.formatUnits(price, 8));
     let assetValue = price.mul(userBalance).div(ethers.utils.parseUnits("1.0", decimal));
     console.log("   User asset Value = ", ethers.utils.formatUnits(assetValue, 8));
@@ -27,7 +27,13 @@ export const calcNeedBorrowAmount = (flashLoanValue: BigNumber, tokenPrice: BigN
 }
 
 export const adoptTokenDicimals = (amount: BigNumber, srcDecimal: number, dstDecimal: number) => {
-    return amount.mul(10 ** (dstDecimal - srcDecimal));
+    console.log(amount);
+    if (dstDecimal > srcDecimal ) {
+        return amount.mul(10 ** (dstDecimal - srcDecimal));
+    } else {
+        return amount.div(10 ** (srcDecimal - dstDecimal));
+    }
+    
 }
 
 /**
@@ -35,4 +41,8 @@ export const adoptTokenDicimals = (amount: BigNumber, srcDecimal: number, dstDec
  */
 export const getAmountOutleast = (amount:BigNumber, slippage: number) => {
     return amount.mul(10000 - slippage).div(10000);
+}
+
+export const getAmountInleast = (amount:BigNumber, slippage: number) => {
+    return amount.mul(10000).div(10000 - slippage);
 }

@@ -107,16 +107,17 @@ contract FlashLoan is IFlashLoanReceiver{
             console.log("long asset is ",assets[0]);
             console.log("flash loan amount is ", amounts[0]);
             console.log("premiums is ", premiums[0]);
-            uint256 expectAmountOut = uint256(bytes32(params[23:]));
+            uint256 expectAmountIn = uint256(bytes32(params[23:]));            
+            console.log("expectAmountIn: ", expectAmountIn);
             IERC20(assets[0]).approve(address(COMET), amounts[0]);
             COMET.supplyTo(initiator, assets[0], amounts[0]);
             console.log("");
             uint256 balance = COMET.collateralBalanceOf(initiator, assets[0]);
             console.log("After supply collateral balance is: ", balance);
-            COMET.withdrawFrom(initiator, address(this), USDC, 2000000000);
+            COMET.withdrawFrom(initiator, address(this), USDC, expectAmountIn);
             balance = IERC20(USDC).balanceOf(address(this));
             console.log("After borrow usdc balance is: ", balance);
-            uint256 amountOut = swapExactInputSingle(USDC, assets[0], balance, 3000, expectAmountOut);
+            uint256 amountOut = swapExactInputSingle(USDC, assets[0], expectAmountIn, 3000, 0);
             console.log("After swap amount is :", amountOut);
             IERC20(assets[0]).approve(address(POOL), amounts[0] + premiums[0]);
         }
