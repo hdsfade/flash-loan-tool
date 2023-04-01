@@ -32,7 +32,6 @@ contract Swap {
     function swap(
         SwapParams memory swapParams
     ) public returns (uint256 amountOut) {
-
         if (swapParams.single) {
             amountOut = swapExactInputSingle(
                 swapParams.path,
@@ -48,7 +47,7 @@ contract Swap {
                 swapParams.amountOutMinimum
             );
         }
-        console.log('end swap');
+        console.log("end swap");
     }
 
     function swapExactInputSingle(
@@ -58,14 +57,19 @@ contract Swap {
         uint256 amountOutMinimum
     ) internal returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
-        console.log('tokenIn:', tokenIn);
-        console.log('tokenOut:', tokenOut);
-        console.log('fee:', fee);
+        console.log("tokenIn:", tokenIn);
+        console.log("tokenOut:", tokenOut);
+        console.log("fee:", fee);
 
         _safeApprove(tokenIn, address(swapRouter), amountIn);
-        console.log('success to safeApprove');
-        bool success =IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
-        console.log('success: ', success);
+        console.log("success to safeApprove");
+        // if flashloan to contracts, need to remove
+        bool success = IERC20(tokenIn).transferFrom(
+            msg.sender,
+            address(this),
+            amountIn
+        );
+        console.log("success: ", success);
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
@@ -80,7 +84,7 @@ contract Swap {
             });
 
         amountOut = swapRouter.exactInputSingle(params);
-        console.log('amountOut:', amountOut);
+        console.log("amountOut:", amountOut);
     }
 
     function swapExactInput(
@@ -89,7 +93,7 @@ contract Swap {
         uint256 amountIn,
         uint256 amountOutMinimum
     ) internal returns (uint256 amountOut) {
-        console.log('in swapExactInput');
+        console.log("in swapExactInput");
         (address tokenIn, , ) = decodeFirstPool(path);
 
         _safeApprove(tokenIn, address(swapRouter), amountIn);
