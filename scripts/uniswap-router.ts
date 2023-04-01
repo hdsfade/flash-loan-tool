@@ -35,21 +35,21 @@ const hre: HardhatRuntimeEnvironment = require('hardhat');
 const mainnetUrl = 'http://localhost:8545/';
 const mainnetProvider = new ethers.providers.JsonRpcProvider(mainnetUrl);
 
-const WETH_TOKEN = new Token(
+export const WETH_TOKEN = new Token(
     SupportedChainId.MAINNET,
     WETHAddress,
     18,
     'WETH',
     'Wrapped Ether'
 )
-const USDC_TOKEN = new Token(
+export const USDC_TOKEN = new Token(
     SupportedChainId.MAINNET,
     USDCAddress,
     6,
     'USDC',
     'USD//C'
 )
-const DAI_TOKEN = new Token(
+export const DAI_TOKEN = new Token(
     SupportedChainId.MAINNET,
     DaiAddress,
     18,
@@ -77,105 +77,105 @@ const alphaRouterConfig: AlphaRouterConfig = {
     protocols: [Protocol.V3]
 }
 
-async function main() {
-    const swapRouterAbi = await (await hre.artifacts.readArtifact("ISwapRouter")).abi;
-    const uniswapSwapRouter = new ethers.Contract(V3_SWAP_ROUTER_ADDRESS, swapRouterAbi);
-    const swapContract = await hre.ethers.getContractFactory("Swap");
+// async function main() {
+//     const swapRouterAbi = await (await hre.artifacts.readArtifact("ISwapRouter")).abi;
+//     const uniswapSwapRouter = new ethers.Contract(V3_SWAP_ROUTER_ADDRESS, swapRouterAbi);
+//     const swapContract = await hre.ethers.getContractFactory("Swap");
 
     
-    const account = await hre.ethers.getSigner("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
-    const WETH = new ethers.Contract(WETHAddress, WethABI, account);
+//     const account = await hre.ethers.getSigner("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+//     const WETH = new ethers.Contract(WETHAddress, WethABI, account);
 
-    registryToken('WETH', WETH_TOKEN);
-    registryToken('USDC', USDC_TOKEN);
-    registryToken('DAI', DAI_TOKEN);
+//     registryToken('WETH', WETH_TOKEN);
+//     registryToken('USDC', USDC_TOKEN);
+//     registryToken('DAI', DAI_TOKEN);
 
-    const amountIn = 1;
-    const realAmountIn = fromReadableAmount(
-        amountIn,
-        WETH_TOKEN.decimals
-    ).toString();
-    const slippageTolerance = new Percent(50, 10_1000);
+//     const amountIn = 1;
+//     const realAmountIn = fromReadableAmount(
+//         amountIn,
+//         WETH_TOKEN.decimals
+//     ).toString();
+//     const slippageTolerance = new Percent(50, 10_1000);
 
-    const swap = await swapContract.deploy(V3_SWAP_ROUTER_ADDRESS);
-    await swap.deployed();
-    console.log(
-        `swap has been deployed at ${swap.address}`
-    )
+//     const swap = await swapContract.deploy(V3_SWAP_ROUTER_ADDRESS);
+//     await swap.deployed();
+//     console.log(
+//         `swap has been deployed at ${swap.address}`
+//     )
 
-    const tx1 = await WETH.deposit({value: realAmountIn})
-    const WETHBalance1 = await WETH.balanceOf(account.address);
-    console.log("WETHB: ", WETHBalance1);
+//     const tx1 = await WETH.deposit({value: realAmountIn})
+//     const WETHBalance1 = await WETH.balanceOf(account.address);
+//     console.log("WETHB: ", WETHBalance1);
 
-    const approveAmount = fromReadableAmount(
-        2 * amountIn,
-        WETH_TOKEN.decimals
-    ).toString();
-    const tx2 = await WETH.approve(swap.address, approveAmount);
-    console.log('approve.')
-
-
+//     const approveAmount = fromReadableAmount(
+//         2 * amountIn,
+//         WETH_TOKEN.decimals
+//     ).toString();
+//     const tx2 = await WETH.approve(swap.address, approveAmount);
+//     console.log('approve.')
 
 
-    const route = await swapRoute(
-        'WETH',
-        realAmountIn,
-        'USDC',
-        slippageTolerance
-    )
 
-    if (route == null || route.methodParameters == undefined) throw 'No route loaded';
 
-    console.log(...route.trade.swaps);
-    const { route: routePath, outputAmount } = route.trade.swaps[0];
-    const minimumAmount = route.trade.minimumAmountOut(slippageTolerance, outputAmount).quotient;
-    const path = encodeRouteToPath(routePath, false);
+//     const route = await swapRoute(
+//         'WETH',
+//         realAmountIn,
+//         'USDC',
+//         slippageTolerance
+//     )
 
-    console.log(`minimum Amount: ${minimumAmount}`);
-    console.log(`route path: ${path}`);
+//     if (route == null || route.methodParameters == undefined) throw 'No route loaded';
 
-    console.log(`You'll get ${route.quote.toFixed()} of ${USDC_TOKEN.symbol}`);
-    // output quote minus gas fees
-    console.log(`Gas Adjusted Quote: ${route.quoteGasAdjusted.toFixed()}`);
-    console.log(`Gas Used Quote Token: ${route.estimatedGasUsedQuoteToken.toFixed()}`);
-    console.log(`Gas Used USD: ${route.estimatedGasUsedUSD.toFixed()}`);
-    console.log(`Gas Used: ${route.estimatedGasUsed.toString()}`);
-    console.log(`Gas Price Wei: ${route.gasPriceWei}`);
+//     console.log(...route.trade.swaps);
+//     const { route: routePath, outputAmount } = route.trade.swaps[0];
+//     const minimumAmount = route.trade.minimumAmountOut(slippageTolerance, outputAmount).quotient;
+//     const path = encodeRouteToPath(routePath, false);
 
-    const paths = route.route[0].tokenPath.map(value => value.symbol);
-    console.log(`route paths: ${paths}`);
-    console.log(`trade: ${route.trade}`);
-    const single = route.methodParameters.calldata.includes('5ae401dc');
+//     console.log(`minimum Amount: ${minimumAmount}`);
+//     console.log(`route path: ${path}`);
 
-    let params = {
-        path: path,
-        single: single,
-        recipient: account.address,
-        amountIn: realAmountIn,
-        amountOutMinimum: minimumAmount.toString()
-    }
+//     console.log(`You'll get ${route.quote.toFixed()} of ${USDC_TOKEN.symbol}`);
+//     // output quote minus gas fees
+//     console.log(`Gas Adjusted Quote: ${route.quoteGasAdjusted.toFixed()}`);
+//     console.log(`Gas Used Quote Token: ${route.estimatedGasUsedQuoteToken.toFixed()}`);
+//     console.log(`Gas Used USD: ${route.estimatedGasUsedUSD.toFixed()}`);
+//     console.log(`Gas Used: ${route.estimatedGasUsed.toString()}`);
+//     console.log(`Gas Price Wei: ${route.gasPriceWei}`);
 
-    const amountOut1 = await swap.swap(params);
-    console.log("amountOut1: ", amountOut1);
+//     const paths = route.route[0].tokenPath.map(value => value.symbol);
+//     console.log(`route paths: ${paths}`);
+//     console.log(`trade: ${route.trade}`);
+//     const single = route.methodParameters.calldata.includes('5ae401dc');
 
-    const WETHBalance2 = await WETH.balanceOf(account.address);
-    console.log("WETHB: ", WETHBalance2);
+//     let params = {
+//         path: path,
+//         single: single,
+//         recipient: account.address,
+//         amountIn: realAmountIn,
+//         amountOutMinimum: minimumAmount.toString()
+//     }
 
-    params.single = false;
-    const amountOut11 = await swap.swap(params);
-    console.log("amountOut11: ", amountOut11);
+//     const amountOut1 = await swap.swap(params);
+//     console.log("amountOut1: ", amountOut1);
 
-    const WETHBalance3 = await WETH.balanceOf(account.address);
-    console.log("WETHB: ", WETHBalance3);
+//     const WETHBalance2 = await WETH.balanceOf(account.address);
+//     console.log("WETHB: ", WETHBalance2);
 
-}
+//     params.single = false;
+//     const amountOut11 = await swap.swap(params);
+//     console.log("amountOut11: ", amountOut11);
+
+//     const WETHBalance3 = await WETH.balanceOf(account.address);
+//     console.log("WETHB: ", WETHBalance3);
+
+// }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-});
+// main().catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+// });
 
 /**
  * Uses Uniswap's smart order router to compute optimal swap route.
