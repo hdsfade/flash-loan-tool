@@ -2,6 +2,8 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { BigNumber, ethers } from 'ethers';
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { impersonateAccount } from "@nomicfoundation/hardhat-network-helpers";
+import {Percent} from '@uniswap/sdk-core';
+
 import { DaiAddress, WETHAddress, aWETHAddress, WALLET_ADDRESS} from './address';
 import { 
   calcUserAssetValue,
@@ -26,6 +28,10 @@ import {
 } from "./helpers/aaveHelper";
 import {deployFlashLoan} from "./helpers/deployHelper";
 import {hre} from "./constant";
+import {WETH_TOKEN, DAI_TOKEN, USDC_TOKEN, registryToken, swapRoute, encodeRouteToPath} from "./uniswap-router"
+import {
+  WethABI
+} from './ABI'
 
 async function main() {
 
@@ -113,10 +119,48 @@ async function main() {
     const interestRateModes : ethers.BigNumber[] = [BigNumber.from("2"), ];
     // this params is used to meet the condition in executeOperation
     // params: 1. address is long asset address 2. Slippage 500 ~ 0.05% 3000 ~ 0.3% 10000 ~ 1%
-    const poolFee = 3000;
+    // const poolFee = 3000;
     const mode = 1;
-    const params = ethers.utils.solidityPack(["uint8","address", "uint16", "uint256"], [mode, WETHAddress, poolFee, amountOutLeast]);
+
     // const params = ethers.utils.formatBytes32String("hello");
+    registryToken('WETH', WETH_TOKEN);
+    registryToken('DAI', DAI_TOKEN);
+    const slippageTolerance = new Percent(20, 10_0000);
+    const route = await swapRoute(
+      'WETH',
+      flashloanAmount.toString(),
+      'DAI',
+      slippageTolerance
+    );
+
+    if (route == null || route.methodParameters == undefined) throw 'No route loaded';
+    
+    console.log(...route.trade.swaps);
+    const { route: routePath, outputAmount } = route.trade.swaps[0];
+    const minimumAmount = route.trade.minimumAmountOut(slippageTolerance, outputAmount).quotient;
+    // const minimumAmount = 0;
+    const path = encodeRouteToPath(routePath, false);
+    // const path = ethers.utils.solidityPack(["address", "uint24", "address"], [DaiAddress, 3000, WETHAddress]);
+    console.log(`minimum Amount: ${minimumAmount}`);
+    console.log(`route path: ${path}`);
+
+    console.log(`You'll get ${route.quote.toFixed()} of ${USDC_TOKEN.symbol}`);
+    // output quote minus gas fees
+    console.log(`Gas Adjusted Quote: ${route.quoteGasAdjusted.toFixed()}`);
+    console.log(`Gas Used Quote Token: ${route.estimatedGasUsedQuoteToken.toFixed()}`);
+    console.log(`Gas Used USD: ${route.estimatedGasUsedUSD.toFixed()}`);
+    console.log(`Gas Used: ${route.estimatedGasUsed.toString()}`);
+    console.log(`Gas Price Wei: ${route.gasPriceWei}`);
+
+    const paths = route.route[0].tokenPath.map(value => value.symbol);
+
+    console.log(`route paths: ${paths}`);
+    console.log(`trade: ${route.trade}`);
+    const single = route.methodParameters.calldata.includes('5ae401dc');
+    // const single = true;
+
+    // params: mode+single+expectAmountOut+path
+    const params = ethers.utils.solidityPack(["uint8", "bool", "uint256", "bytes"], [mode, single, minimumAmount, path]);
 
     const tx2 = await flashLoan.connect(fakeSigner).callAAVEFlashLoan(
       flashLoan.address,
