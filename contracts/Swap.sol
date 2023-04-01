@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
+import "hardhat/console.sol";
 
 contract Swap {
     struct SwapParams {
@@ -20,6 +21,8 @@ contract Swap {
     /// @dev The offset of a single token address and pool fee
     uint256 private constant NEXT_OFFSET = ADDR_SIZE + FEE_SIZE;
 
+    IERC20 public WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
     ISwapRouter public swapRouter;
 
     constructor(ISwapRouter _swapRouter) {
@@ -29,6 +32,7 @@ contract Swap {
     function swap(
         SwapParams memory swapParams
     ) public returns (uint256 amountOut) {
+
         if (swapParams.single) {
             amountOut = swapExactInputSingle(
                 swapParams.path,
@@ -44,6 +48,7 @@ contract Swap {
                 swapParams.amountOutMinimum
             );
         }
+        console.log('end swap');
     }
 
     function swapExactInputSingle(
@@ -53,9 +58,14 @@ contract Swap {
         uint256 amountOutMinimum
     ) internal returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
+        console.log('tokenIn:', tokenIn);
+        console.log('tokenOut:', tokenOut);
+        console.log('fee:', fee);
 
         _safeApprove(tokenIn, address(swapRouter), amountIn);
-        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        console.log('success to safeApprove');
+        bool success =IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        console.log('success: ', success);
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
@@ -70,6 +80,7 @@ contract Swap {
             });
 
         amountOut = swapRouter.exactInputSingle(params);
+        console.log('amountOut:', amountOut);
     }
 
     function swapExactInput(
@@ -78,6 +89,7 @@ contract Swap {
         uint256 amountIn,
         uint256 amountOutMinimum
     ) internal returns (uint256 amountOut) {
+        console.log('in swapExactInput');
         (address tokenIn, , ) = decodeFirstPool(path);
 
         _safeApprove(tokenIn, address(swapRouter), amountIn);
