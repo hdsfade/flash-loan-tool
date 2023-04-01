@@ -58,10 +58,10 @@ const DAI_TOKEN = new Token(
 )
 
 var tokenMap = new Map();
-function registryToken(key: string, token: Token) {
+export function registryToken(key: string, token: Token) {
     tokenMap.set(key, token);
 }
-function getToken(key: string): Token {
+export function getToken(key: string): Token {
     return tokenMap.get(key)
 }
 
@@ -184,7 +184,7 @@ main().catch((error) => {
  * @param outToken out token
  * @param slippageTolerance tolerable slippage
  */
-async function swapRoute(inToken: string, amountIn: string, outToken: string, slippageTolerance: Percent): Promise<SwapRoute | null> {
+export async function swapRoute(inToken: string, amountIn: string, outToken: string, slippageTolerance: Percent): Promise<SwapRoute | null> {
     const IN_TOKEN = getToken(inToken);
     const OUT_TOKEN = getToken(outToken);
     if (IN_TOKEN === undefined || OUT_TOKEN === undefined) throw 'incorrect inToken or outToken';
@@ -248,7 +248,7 @@ export function encodeRouteToPath(route: Route<Currency, Currency>, exactOutput:
  * @param amount the number to count decimals
  * @param decimals currency decimals
  */
-function fromReadableAmount(amount: number, decimals: number): JSBI {
+export function fromReadableAmount(amount: number, decimals: number): JSBI {
     const extraDigits = Math.pow(10, countDecimals(amount))
     const adjustedAmount = amount * extraDigits
     return JSBI.divide(
