@@ -100,20 +100,20 @@ contract FlashLoan is IFlashLoanReceiver {
         uint8 mode = uint8(bytes1(params[0:1]));
         bool single = toBool(params, 1);
         uint256 expectAmountOut = toUint256(params, 2);
-        console.log("mode is: ", mode);
-        console.log("single is: ", single);
-        console.log("expectAmountOut is: ", expectAmountOut);
+        // console.log("mode is: ", mode);
+        // console.log("single is: ", single);
+        // console.log("expectAmountOut is: ", expectAmountOut);
 
         // In order to simplify, it check the value of mode to decide what platfrom user want to leverage
         // in the future, we use function selector todicide
         if (mode == 1) {
             bytes memory path = params[34:];
-            (address Long, , ) = decodeFirstPool(path);
+            (, address Long, ) = decodeFirstPool(path);
 
             // console.log("AAVE");
             // console.log("long asset is ", Long);
             // console.log("short asset is ", assets[0]);
-            // console.log("flash loan amount is ", amounts[0]);
+            console.log("flash loan amount is ", amounts[0]);
             // console.log("premiums is ", premiums[0]);
 
             SwapParams memory swapParams = SwapParams({
@@ -238,8 +238,10 @@ contract FlashLoan is IFlashLoanReceiver {
     ) internal returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
+        console.log("tokenIn:", tokenIn);
+        console.log("tokenOut:", tokenOut);
         _safeApprove(tokenIn, address(SWAP_ROUTER), amountIn);
-        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        // IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
             .ExactInputSingleParams({
@@ -265,7 +267,7 @@ contract FlashLoan is IFlashLoanReceiver {
         (address tokenIn, , ) = decodeFirstPool(path);
 
         _safeApprove(tokenIn, address(SWAP_ROUTER), amountIn);
-        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        // IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = ISwapRouter
             .ExactInputParams({
