@@ -93,6 +93,7 @@ contract Swap {
         (address tokenIn, , ) = decodeFirstPool(path);
 
         _safeApprove(tokenIn, address(swapRouter), amountIn);
+        // if flashloan to contracts, need to remove
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
 
         ISwapRouter.ExactInputParams memory params = ISwapRouter
