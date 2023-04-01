@@ -9,11 +9,19 @@ import {IWETH} from "./interfaces/IWETH.sol";
 import {IWstETH} from "./interfaces/LIDO/IWstETH.sol";
 import {ILido} from "./interfaces/LIDO/ILido.sol";
 import {IComet} from "./interfaces/COMP/IComet.sol";
-import {ISwapRouter} from '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import "hardhat/console.sol";
 
-contract FlashLoan is IFlashLoanReceiver{
+contract FlashLoan is IFlashLoanReceiver {
+    struct SwapParams {
+        bytes path;
+        bool single;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+
     IPoolAddressesProvider public override ADDRESSES_PROVIDER;
     IComet public COMET;
     ISwapRouter public SWAP_ROUTER;
@@ -21,10 +29,18 @@ contract FlashLoan is IFlashLoanReceiver{
     IPool public override POOL;
     address public OWNER;
 
-    bytes32 public constant LIDOMODE = '0';
+    bytes32 public constant LIDOMODE = "0";
     address public LIDOADDRESS = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-    address payable public WSTADDRESS = payable(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    address payable public WSTADDRESS =
+        payable(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     address public USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
+    /// @dev The length of the bytes encoded address
+    uint256 private constant ADDR_SIZE = 20;
+    /// @dev The length of the bytes encoded fee
+    uint256 private constant FEE_SIZE = 3;
+    /// @dev The offset of a single token address and pool fee
+    uint256 private constant NEXT_OFFSET = ADDR_SIZE + FEE_SIZE;
 
     constructor(address provider, address swapRouter, address owner) public {
         ADDRESSES_PROVIDER = IPoolAddressesProvider(provider);
@@ -54,13 +70,13 @@ contract FlashLoan is IFlashLoanReceiver{
     ) external returns (bool) {
         // uint256 balance = IERC20(assets[0]).balanceOf(address(this));
         // console.log("balance is: ", balance);
-        // if we keep params in a map, Will the transaction consume less gas? 
+        // if we keep params in a map, Will the transaction consume less gas?
         POOL.flashLoan(
-            address(this), 
-            assets, 
-            amounts, 
+            address(this),
+            assets,
+            amounts,
             interestRateModes,
-            OWNER, 
+            OWNER,
             params,
             referralCode
         );
@@ -68,6 +84,7 @@ contract FlashLoan is IFlashLoanReceiver{
         return true;
     }
 
+    // params: mode+single+expectAmountOut+path
     function executeOperation(
         address[] calldata assets,
         uint256[] calldata amounts,
@@ -81,44 +98,69 @@ contract FlashLoan is IFlashLoanReceiver{
         // console.logBytes(abi.encodePacked(LIDOMODE));
         // (address Long, uint16 slip, uint256 expectAmountOut) = abi.decode(params, (address, uint16, uint256));
         uint8 mode = uint8(bytes1(params[0:1]));
+        bool single = toBool(params, 1);
+        uint256 expectAmountOut = toUint256(params, 2);
         console.log("mode is: ", mode);
+        console.log("single is: ", single);
+        console.log("expectAmountOut is: ", expectAmountOut);
 
         // In order to simplify, it check the value of mode to decide what platfrom user want to leverage
         // in the future, we use function selector todicide
         if (mode == 1) {
-            console.log("AAVE");
-            address Long = address(bytes20(params[1:21]));
-            uint16 poolFee = uint16(bytes2(params[21:23]));
-            uint256 expectAmountOut = uint256(bytes32(params[23:]));
-            console.log("Long address", Long);
-            console.log("poolFee is: ", poolFee);
-            console.log("expectAmountOut: ", expectAmountOut);
-            console.log("short asset is ",assets[0]);
-            console.log("flash loan amount is ", amounts[0]);
-            console.log("premiums is ", premiums[0]);
-            uint256 amountOut = swapExactInputSingle(assets[0], Long, amounts[0], poolFee, expectAmountOut);
+            bytes memory path = params[34:];
+            (address Long, , ) = decodeFirstPool(path);
+
+            // console.log("AAVE");
+            // console.log("long asset is ", Long);
+            // console.log("short asset is ", assets[0]);
+            // console.log("flash loan amount is ", amounts[0]);
+            // console.log("premiums is ", premiums[0]);
+
+            SwapParams memory swapParams = SwapParams({
+                path: path,
+                single: single,
+                recipient: address(this),
+                amountIn: amounts[0],
+                amountOutMinimum: expectAmountOut
+            });
+
+            uint256 amountOut = swap(swapParams);
             console.log("After swap amount is :", amountOut);
             // deposit the amount of asset to IPOOL
             // approve pool to pull money form this to deposit
             bool status = leverageAAVEPos(Long, amountOut, OWNER, 0);
-        } 
-        else if (mode == 2) {
+        } else if (mode == 2) {
             console.log("Compound");
-            console.log("long asset is ",assets[0]);
+            console.log("long asset is ", assets[0]);
             console.log("flash loan amount is ", amounts[0]);
             console.log("premiums is ", premiums[0]);
-            uint256 expectAmountIn = uint256(bytes32(params[23:]));            
-            console.log("expectAmountIn: ", expectAmountIn);
+
             IERC20(assets[0]).approve(address(COMET), amounts[0]);
             COMET.supplyTo(initiator, assets[0], amounts[0]);
             console.log("");
-            uint256 balance = COMET.collateralBalanceOf(initiator, assets[0]);
-            console.log("After supply collateral balance is: ", balance);
+            // uint256 balance =
+            COMET.collateralBalanceOf(initiator, assets[0]);
+            // console.log("After supply collateral balance is: ", balance);
+            uint256 expectAmountIn = uint256(bytes32(params[34:56]));
+            console.log("expectAmountIn: ", expectAmountIn);
             COMET.withdrawFrom(initiator, address(this), USDC, expectAmountIn);
-            balance = IERC20(USDC).balanceOf(address(this));
-            console.log("After borrow usdc balance is: ", balance);
-            uint256 amountOut = swapExactInputSingle(USDC, assets[0], expectAmountIn, 3000, 0);
+            // balance =
+            IERC20(USDC).balanceOf(address(this));
+            // console.log("After borrow usdc balance is: ", balance);
+
+            SwapParams memory swapParams = SwapParams({
+                path: params[56:], // avoid stack too deep
+                single: single,
+                recipient: address(this),
+                amountIn: expectAmountIn,
+                amountOutMinimum: expectAmountOut
+            });
+            uint256 amountOut = swap(swapParams);
             console.log("After swap amount is :", amountOut);
+        }
+
+        // avoid stack too deep
+        if (mode == 2) {
             IERC20(assets[0]).approve(address(POOL), amounts[0] + premiums[0]);
         }
         // uint256 balance = IERC20(assets[0]).balanceOf(address(this));
@@ -133,7 +175,7 @@ contract FlashLoan is IFlashLoanReceiver{
     // the Out-of-gas problem may be caused by sending eth between the contract and weth, and transfer eth to lido to wstcontract
     // But i think that is a little useless
     function _excuteLIDO(address weth, uint256 amount) internal returns (bool) {
-        // submit eth to 
+        // submit eth to
         console.log(weth);
         console.log(amount);
         // console.logBytes4(bytes4(keccak256(bytes("withdraw(uint256)"))));
@@ -142,67 +184,18 @@ contract FlashLoan is IFlashLoanReceiver{
         IWETH(weth).withdraw(amount);
         console.log("withdraw");
         // uint256 stETH = ILido(LIDOADDRESS).submit{value:amount}(address(this));
-        // use the shortcut wstETH supply to submit eth to lido; 
-        (bool sent, ) = WSTADDRESS.call{value:amount}("");
+        // use the shortcut wstETH supply to submit eth to lido;
+        (bool sent, ) = WSTADDRESS.call{value: amount}("");
         require(sent, "send eth to wstEther fail");
         console.log("transfer done");
         uint256 wstETH = IWstETH(WSTADDRESS).balanceOf(address(this));
         console.log(wstETH);
         // approve pool to pull money form this to deposit
         IERC20(WSTADDRESS).approve(address(POOL), wstETH);
-        POOL.supply(
-            WSTADDRESS,
-            wstETH,
-            OWNER,
-            0
-        );
+        POOL.supply(WSTADDRESS, wstETH, OWNER, 0);
 
         console.log("finish _excuteLIDO Op");
         return true;
-    }
-
-    /**
-     * @notice swapExactInputSingle swaps a fixed amount of DAI for a maximum possible amount of WETH9
-     * using the DAI/WETH9 0.3% pool by calling `exactInputSingle` in the swap router.
-     * @dev The calling address must approve this contract to spend at least `amountIn` worth of its asset for this function to succeed.
-     * @param shortAsset The address of the short asset, which is borrow from flash loan
-     * @param longAsset The address of the short asset, which is used to deposit in AAVE
-     * @param amountIn The exact amount of DAI that will be swapped for WETH9.
-     * @param poolFee The pool Fee level
-     * @param expectAmountOut The expected amount of the Swap Output, calculated by the slip point acceptable to the user
-     * @return amountOut The amount of Long asset received.
-     */
-    function swapExactInputSingle(
-        address shortAsset, 
-        address longAsset, 
-        uint256 amountIn,
-        uint24 poolFee,
-        uint256 expectAmountOut
-    ) public returns (uint256 amountOut) {
-        // msg.sender must approve this contract
-
-        // Approve the router to spend short asset.
-        console.log("short asset is", shortAsset);
-        _safeApprove(shortAsset, address(SWAP_ROUTER), amountIn);
-        console.log("approve done");
-        // Naively set amountOutMinimum to 0. In production, use an oracle or other data source to choose a safer value for amountOutMinimum.
-        // We also set the sqrtPriceLimitx96 to be 0 to ensure we swap our exact input amount.
-        ISwapRouter.ExactInputSingleParams memory params =
-            ISwapRouter.ExactInputSingleParams({
-                tokenIn: shortAsset,
-                tokenOut: longAsset,
-                fee: poolFee,
-                recipient: address(this),
-                deadline: block.timestamp,
-                amountIn: amountIn,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            });
-
-        // The call to `exactInputSingle` executes the swap.
-        amountOut = SWAP_ROUTER.exactInputSingle(params);
-        require(amountOut >= expectAmountOut, "Uniswap Slip too big");
-        console.log("swap done");
     }
 
     function leverageAAVEPos(
@@ -210,25 +203,170 @@ contract FlashLoan is IFlashLoanReceiver{
         uint256 amount,
         address user,
         uint16 refer
-    ) internal returns (bool){
+    ) internal returns (bool) {
         // approve pool to pull money form this to deposit
         IERC20(asset).approve(address(POOL), amount);
-        POOL.supply(
-            asset,
-            amount,
-            user,
-            refer
-        );
+        POOL.supply(asset, amount, user, refer);
         return true;
     }
 
-    function _safeApprove(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SA');
+    function swap(
+        SwapParams memory swapParams
+    ) public returns (uint256 amountOut) {
+        if (swapParams.single) {
+            amountOut = swapExactInputSingle(
+                swapParams.path,
+                swapParams.recipient,
+                swapParams.amountIn,
+                swapParams.amountOutMinimum
+            );
+        } else {
+            amountOut = swapExactInput(
+                swapParams.path,
+                swapParams.recipient,
+                swapParams.amountIn,
+                swapParams.amountOutMinimum
+            );
+        }
+    }
+
+    function swapExactInputSingle(
+        bytes memory path,
+        address recipient,
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    ) internal returns (uint256 amountOut) {
+        (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
+
+        _safeApprove(tokenIn, address(SWAP_ROUTER), amountIn);
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+            .ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: fee,
+                recipient: recipient,
+                deadline: block.timestamp + 3000,
+                amountIn: amountIn,
+                amountOutMinimum: amountOutMinimum,
+                sqrtPriceLimitX96: 0
+            });
+
+        amountOut = SWAP_ROUTER.exactInputSingle(params);
+    }
+
+    function swapExactInput(
+        bytes memory path,
+        address recipient,
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    ) internal returns (uint256 amountOut) {
+        (address tokenIn, , ) = decodeFirstPool(path);
+
+        _safeApprove(tokenIn, address(SWAP_ROUTER), amountIn);
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+
+        ISwapRouter.ExactInputParams memory params = ISwapRouter
+            .ExactInputParams({
+                path: path,
+                recipient: recipient,
+                deadline: block.timestamp + 3000,
+                amountIn: amountIn,
+                amountOutMinimum: amountOutMinimum
+            });
+
+        amountOut = SWAP_ROUTER.exactInput(params);
+    }
+
+    /// @notice Decodes the first pool in path
+    /// @param path The bytes encoded swap path
+    /// @return tokenA The first token of the given pool
+    /// @return tokenB The second token of the given pool
+    /// @return fee The fee level of the pool
+    function decodeFirstPool(
+        bytes memory path
+    ) internal pure returns (address tokenA, address tokenB, uint24 fee) {
+        tokenA = toAddress(path, 0);
+        fee = toUint24(path, ADDR_SIZE);
+        tokenB = toAddress(path, NEXT_OFFSET);
+    }
+
+    /// @dev toAddress decodes bytes to address
+    function toAddress(
+        bytes memory _bytes,
+        uint256 _start
+    ) internal pure returns (address) {
+        require(_start + 20 >= _start, "toAddress_overflow");
+        require(_bytes.length >= _start + 20, "toAddress_outOfBounds");
+        address tempAddress;
+
+        assembly {
+            tempAddress := div(
+                mload(add(add(_bytes, 0x20), _start)),
+                0x1000000000000000000000000
+            )
+        }
+
+        return tempAddress;
+    }
+
+    /// @dev toUint24 decodes bytes to uint24
+    function toUint24(
+        bytes memory _bytes,
+        uint256 _start
+    ) internal pure returns (uint24) {
+        require(_start + 3 >= _start, "toUint24_overflow");
+        require(_bytes.length >= _start + 3, "toUint24_outOfBounds");
+        uint24 tempUint;
+
+        assembly {
+            tempUint := mload(add(add(_bytes, 0x3), _start))
+        }
+
+        return tempUint;
+    }
+
+    /// @dev toBool decodes bytes to bool
+    function toBool(
+        bytes memory _bytes,
+        uint256 _start
+    ) internal pure returns (bool) {
+        require(_start + 1 >= _start, "toBool_overflow");
+        require(_bytes.length >= _start + 1, "toBool_outOfBounds");
+        bool tempBool;
+
+        assembly {
+            tempBool := mload(add(add(_bytes, 0x1), _start))
+        }
+
+        return tempBool;
+    }
+
+    /// @dev toUint256 decodes bytes to uint256
+    function toUint256(
+        bytes memory _bytes,
+        uint256 _start
+    ) internal pure returns (uint256) {
+        require(_start + 32 >= _start, "toUint256_overflow");
+        require(_bytes.length >= _start + 32, "toUint256_outOfBounds");
+        uint256 tempUint;
+
+        assembly {
+            tempUint := mload(add(add(_bytes, 0x20), _start))
+        }
+
+        return tempUint;
+    }
+
+    function _safeApprove(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(IERC20.approve.selector, to, value)
+        );
+        require(
+            success && (data.length == 0 || abi.decode(data, (bool))),
+            "SA"
+        );
     }
 
     receive() external payable {}
