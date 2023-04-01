@@ -127,9 +127,9 @@ async function main() {
     registryToken('DAI', DAI_TOKEN);
     const slippageTolerance = new Percent(20, 10_0000);
     const route = await swapRoute(
-      'WETH',
-      flashloanAmount.toString(),
       'DAI',
+      flashloanAmount.toString(),
+      'WETH',
       slippageTolerance
     );
 
