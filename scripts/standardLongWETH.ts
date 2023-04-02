@@ -125,7 +125,7 @@ async function main() {
     // const params = ethers.utils.formatBytes32String("hello");
     registryToken('WETH', WETH_TOKEN);
     registryToken('DAI', DAI_TOKEN);
-    const slippageTolerance = new Percent(20, 10_0000);
+    const slippageTolerance = new Percent(20, 10_000);
     const route = await swapRoute(
       'DAI',
       flashloanAmount.toString(),
@@ -160,7 +160,7 @@ async function main() {
     // const single = true;
 
     // params: mode+single+expectAmountOut+path
-    const params = ethers.utils.solidityPack(["uint8", "bool", "uint256", "bytes"], [mode, single, minimumAmount, path]);
+    const params = ethers.utils.solidityPack(["uint8", "bool", "uint256", "bytes"], [mode, single, minimumAmount.toString(), path]);
 
     const tx2 = await flashLoan.connect(fakeSigner).callAAVEFlashLoan(
       flashLoan.address,
