@@ -20,9 +20,12 @@
     "hardhat": "^2.13.0"
   },
   "devDependencies": {
+    "@ethersproject/solidity": "^5.7.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@uniswap/router-sdk": "^1.4.0",
+    "@uniswap/smart-order-router": "^3.10.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.3",
     "dotenv": "^16.0.3",
